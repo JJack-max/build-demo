@@ -1,0 +1,61 @@
+name: Build Pake Windows x64
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Pake CLI
+        shell: pwsh
+        run: npm install --global pake-cli
+
+      - name: Show Pake version and options
+        shell: pwsh
+        run: |
+          node --version
+          npm --version
+          rustc --version
+          pake --help
+
+      - name: Build Windows x64 app
+        shell: pwsh
+        run: |
+          pake "https://chatgpt.com" --name "MyApp" --targets x64 --keep-binary --proxy-url "socks5://127.0.0.1:1080"
+
+      - name: Find build outputs
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse -File |
+            Where-Object {
+              $_.Extension -in @(".exe", ".msi")
+            } |
+            Select-Object FullName, Length
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pake-windows-x64
+          path: |
+            *.exe
+            *.msi
+            **/MyApp.exe
+          if-no-files-found: warn
+
